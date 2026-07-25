@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="https://assets.zyrosite.com/cdn-cgi/image/format=auto,w=375,fit=crop/XZvmNNRaLDrvgmBZ/chatgpt-image-2.-feb.-2026-10_14_48-8Vpe6F57loo0sazw.png?v=2">
+<title>لوحة التحكم | التركتور</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;800;900&family=Tajawal:wght@400;500;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+
+<style>
+  :root{
+    --bg:#121110;
+    --bg-panel:#1b1916;
+    --bg-panel-2:#232019;
+    --steel:#8891a0;
+    --steel-dim:#565b63;
+    --ember:#e8630a;
+    --ember-bright:#ff7e21;
+    --ember-dim:#9c4008;
+    --text:#f3eee6;
+    --text-dim:#b6ada0;
+    --line:rgba(243,238,230,0.12);
+    --line-strong:rgba(243,238,230,0.22);
+    --ok:#5fbf7a;
+    --danger:#e07a7a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:'Tajawal','Cairo',sans-serif;line-height:1.6;
+    min-height:100vh;
+  }
+  h1,h2,h3{font-family:'Cairo',sans-serif;font-weight:900;}
+  .mono{font-family:'JetBrains Mono',monospace;letter-spacing:0.04em;}
+  button{font-family:inherit;cursor:pointer;}
+  a{color:inherit;}
+  input,select,textarea{font-family:inherit;}
+
+  /* ---------- LOGIN ---------- */
+  #loginScreen{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+    background:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:56px 56px;
+  }
+  .login-card{
+    width:100%;max-width:380px;background:var(--bg-panel);border:1px solid var(--line-strong);
+    padding:40px 34px;position:relative;
+  }
+  .login-card::before{
+    content:"ADMIN";position:absolute;top:-1px;inset-inline-start:-1px;
+    background:var(--ember);color:#161310;font-family:'JetBrains Mono';font-size:0.68rem;
+    font-weight:700;padding:5px 10px;letter-spacing:0.08em;
+  }
+  .login-brand{display:flex;align-items:center;gap:10px;margin-bottom:28px;}
+  .login-brand .dot{width:8px;height:8px;border-radius:50%;background:var(--ember);box-shadow:0 0 8px var(--ember);}
+  .login-brand span{font-family:'Cairo';font-weight:900;font-size:1.15rem;}
+  .login-card h2{font-size:1.4rem;margin-bottom:6px;}
+  .login-card .sub{color:var(--text-dim);font-size:0.9rem;margin-bottom:26px;}
+  .field{display:flex;flex-direction:column;gap:7px;margin-bottom:18px;}
+  .field label{font-size:0.85rem;font-weight:700;}
+  .field input{
+    background:var(--bg);border:1px solid var(--line-strong);color:var(--text);
+    padding:12px 14px;border-radius:2px;font-size:0.95rem;transition:border-color .2s, box-shadow .2s;
+  }
+  .field input:focus{outline:none;border-color:var(--ember);box-shadow:0 0 0 3px rgba(232,99,10,0.15);}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--ember);color:#161310;font-weight:800;padding:12px 20px;
+    border-radius:2px;border:1px solid var(--ember);font-size:0.92rem;transition:all .2s;width:100%;
+  }
+  .btn:hover{background:var(--ember-bright);border-color:var(--ember-bright);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line-strong);width:auto;}
+  .btn.ghost:hover{border-color:var(--ember);color:var(--ember);}
+  .btn.small{padding:8px 14px;font-size:0.82rem;width:auto;}
+  .login-error{color:var(--danger);font-size:0.85rem;margin-top:14px;display:none;}
+  .login-error.show{display:block;}
+
+  /* ---------- APP SHELL ---------- */
+  #adminApp{display:none;min-height:100vh;}
+  #adminApp.show{display:block;}
+
+  .topbar{
+    position:sticky;top:0;z-index:50;background:rgba(18,17,16,0.94);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+  }
+  .topbar-inner{
+    max-width:1320px;margin:0 auto;padding:0 24px;height:68px;
+    display:flex;align-items:center;justify-content:space-between;gap:20px;
+  }
+  .topbar .brand{display:flex;align-items:center;gap:10px;}
+  .topbar .brand .dot{width:7px;height:7px;border-radius:50%;background:var(--ember);box-shadow:0 0 8px var(--ember);}
+  .topbar .brand span{font-family:'Cairo';font-weight:900;font-size:1.05rem;}
+  .topbar .brand small{color:var(--steel);font-size:0.72rem;font-family:'JetBrains Mono';margin-inline-start:8px;}
+  .who{display:flex;align-items:center;gap:14px;}
+  .who .email{color:var(--text-dim);font-size:0.82rem;font-family:'JetBrains Mono';}
+
+  .shell{max-width:1320px;margin:0 auto;padding:28px 24px 80px;}
+
+  /* stats */
+  .stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:28px;}
+  .stat{background:var(--bg-panel);padding:20px 22px;}
+  .stat .n{font-family:'Cairo';font-weight:900;font-size:1.7rem;color:var(--ember);}
+  .stat .l{font-size:0.76rem;color:var(--steel);margin-top:4px;}
+
+  /* tabs */
+  .tabs{display:flex;gap:2px;margin-bottom:22px;border-bottom:1px solid var(--line);}
+  .tab-btn{
+    background:none;border:none;color:var(--text-dim);padding:12px 20px;font-weight:700;font-size:0.92rem;
+    border-bottom:2px solid transparent;transition:color .2s, border-color .2s;
+  }
+  .tab-btn:hover{color:var(--text);}
+  .tab-btn.active{color:var(--ember);border-color:var(--ember);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  /* controls */
+  .controls{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;align-items:center;}
+  .controls input[type="text"], .controls select{
+    background:var(--bg-panel);border:1px solid var(--line-strong);color:var(--text);
+    padding:10px 14px;border-radius:2px;font-size:0.88rem;
+  }
+  .controls input[type="text"]{min-width:220px;flex-grow:1;max-width:320px;}
+  .controls input:focus, .controls select:focus{outline:none;border-color:var(--ember);}
+  .controls .spacer{flex-grow:1;}
+
+  /* table / list */
+  .list-wrap{border:1px solid var(--line);background:var(--bg-panel);}
+  .reg-row{
+    display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 0.9fr 1fr 40px;
+    gap:14px;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);
+    transition:background .2s;cursor:pointer;
+  }
+  .reg-row:hover{background:var(--bg-panel-2);}
+  .reg-row:last-child{border-bottom:none;}
+  .reg-row.head{
+    font-family:'JetBrains Mono';font-size:0.68rem;color:var(--steel);letter-spacing:0.06em;
+    text-transform:uppercase;cursor:default;
+  }
+  .reg-row.head:hover{background:none;}
+  .reg-name{font-weight:700;}
+  .reg-name small{display:block;color:var(--text-dim);font-weight:400;font-size:0.78rem;margin-top:2px;}
+  .badge{
+    display:inline-flex;align-items:center;gap:6px;font-size:0.74rem;font-weight:700;
+    padding:4px 10px;border-radius:999px;font-family:'JetBrains Mono';white-space:nowrap;
+  }
+  .badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .badge-basic{color:var(--steel);background:rgba(136,145,160,0.12);}
+  .badge-pro{color:var(--ember-bright);background:rgba(232,99,10,0.14);}
+  .badge-elite{color:#ffb35e;background:rgba(255,179,94,0.12);}
+  .badge-consult{color:var(--ok);background:rgba(95,191,122,0.12);}
+  .status-select{
+    background:var(--bg);border:1px solid var(--line-strong);color:var(--text);
+    padding:6px 10px;border-radius:2px;font-size:0.78rem;
+  }
+  .status-select:focus{outline:none;border-color:var(--ember);}
+  .reg-date{color:var(--text-dim);font-size:0.82rem;}
+  .view-arrow{color:var(--steel);font-size:1.1rem;text-align:center;}
+  .empty-state{padding:60px 20px;text-align:center;color:var(--text-dim);}
+
+  /* modal */
+  .modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(10,9,8,0.72);z-index:200;
+    align-items:flex-start;justify-content:center;padding:60px 20px;overflow-y:auto;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal{
+    width:100%;max-width:640px;background:var(--bg-panel);border:1px solid var(--line-strong);
+    padding:32px;position:relative;
+  }
+  .modal-close{
+    position:absolute;top:16px;inset-inline-end:16px;background:none;border:1px solid var(--line-strong);
+    color:var(--text-dim);width:32px;height:32px;border-radius:2px;font-size:1rem;
+  }
+  .modal-close:hover{color:var(--text);border-color:var(--ember);}
+  .modal h3{font-size:1.3rem;margin-bottom:4px;}
+  .modal .modal-sub{color:var(--text-dim);font-size:0.85rem;margin-bottom:22px;}
+  .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 20px;}
+  .modal-field{border-bottom:1px solid var(--line);padding-bottom:10px;}
+  .modal-field.full{grid-column:1/-1;}
+  .modal-field .k{font-size:0.7rem;color:var(--steel);font-family:'JetBrains Mono';letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px;}
+  .modal-field .v{font-size:0.92rem;word-break:break-word;}
+  .modal-field .v:empty::after{content:"—";color:var(--steel-dim);}
+  .modal-actions{display:flex;gap:12px;margin-top:26px;flex-wrap:wrap;}
+
+  /* calendar */
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+  .cal-head h3{font-size:1.15rem;}
+  .cal-nav{display:flex;gap:8px;align-items:center;}
+  .cal-nav button{
+    background:var(--bg-panel);border:1px solid var(--line-strong);color:var(--text);
+    width:34px;height:34px;border-radius:2px;font-size:1rem;
+  }
+  .cal-nav button:hover{border-color:var(--ember);color:var(--ember);}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--line);border:1px solid var(--line);}
+  .cal-dow{background:var(--bg-panel);padding:10px;text-align:center;font-family:'JetBrains Mono';font-size:0.68rem;color:var(--steel);letter-spacing:0.06em;}
+  .cal-cell{background:var(--bg-panel);min-height:96px;padding:8px;position:relative;transition:background .2s;}
+  .cal-cell.has-data{cursor:pointer;}
+  .cal-cell.has-data:hover{background:var(--bg-panel-2);}
+  .cal-cell.empty-cell{background:var(--bg);}
+  .cal-cell .day-num{font-family:'Cairo';font-weight:800;font-size:0.9rem;color:var(--text-dim);}
+  .cal-cell.today .day-num{color:var(--ember);}
+  .cal-dots{display:flex;flex-wrap:wrap;gap:3px;margin-top:8px;}
+  .cal-dot{width:7px;height:7px;border-radius:50%;}
+  .cal-count{
+    position:absolute;bottom:8px;inset-inline-end:8px;background:var(--ember);color:#161310;
+    font-family:'JetBrains Mono';font-size:0.68rem;font-weight:700;padding:1px 6px;border-radius:999px;
+  }
+  .reg-row.day-reg-row{grid-template-columns:1.4fr 1fr 1fr 1fr;}
+  .day-list{margin-top:20px;border:1px solid var(--line);background:var(--bg-panel);display:none;}
+  .day-list.show{display:block;}
+  .day-list-head{padding:14px 18px;border-bottom:1px solid var(--line);font-weight:700;display:flex;justify-content:space-between;align-items:center;}
+
+  /* toast */
+  .toast{
+    position:fixed;bottom:24px;inset-inline-start:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--bg-panel);border:1px solid var(--line-strong);padding:12px 22px;border-radius:2px;
+    font-size:0.86rem;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;z-index:300;
+  }
+  html[dir="rtl"] .toast{transform:translate(50%, 20px);}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
+  html[dir="rtl"] .toast.show{transform:translate(50%, 0);}
+  .toast.ok{border-color:var(--ok);color:var(--ok);}
+  .toast.err{border-color:var(--danger);color:var(--danger);}
+
+  @media(max-width:900px){
+    .stats-row{grid-template-columns:repeat(2,1fr);}
+    .reg-row{grid-template-columns:1fr;gap:6px;}
+    .reg-row.head{display:none;}
+    .reg-row{padding:16px;}
+    .view-arrow{display:none;}
+    .modal-grid{grid-template-columns:1fr;}
+    .cal-cell{min-height:64px;}
+    .day-reg-row{grid-template-columns:1fr !important;}
+  }
+  @media(max-width:600px){
+    .topbar-inner{padding:0 16px;height:60px;}
+    .topbar .brand small{display:none;}
+    .who .email{display:none;}
+    .shell{padding:20px 16px 60px;}
+    .stats-row{grid-template-columns:repeat(2,1fr);}
+    .stat{padding:16px 14px;}
+    .stat .n{font-size:1.4rem;}
+    .controls{gap:10px;}
+    .controls input[type="text"]{min-width:0;max-width:none;width:100%;flex-basis:100%;}
+    .controls select{flex:1;min-width:0;}
+    .controls .spacer{display:none;}
+    #exportCsvBtn, #exportPdfBtn{flex:1;}
+    .tab-btn{padding:10px 14px;font-size:0.85rem;}
+    .modal-overlay{padding:20px 12px;}
+    .modal{padding:22px 18px;}
+    .cal-grid{gap:1px;}
+    .cal-dow{padding:6px 2px;font-size:0.6rem;}
+    .cal-cell{min-height:52px;padding:5px;}
+    .cal-cell .day-num{font-size:0.75rem;}
+    .cal-count{bottom:4px;inset-inline-end:4px;font-size:0.6rem;padding:0 5px;}
+    .cal-dots{gap:2px;margin-top:4px;}
+    .login-card{padding:30px 22px;}
+  }
+  @media(max-width:380px){
+    .stats-row{grid-template-columns:1fr 1fr;}
+    .cal-dot{width:5px;height:5px;}
+  }
+
+  /* ---------- PRINT / PDF REPORT ---------- */
+  .print-only{display:none;}
+  @media print{
+    body *{visibility:hidden;}
+    #printReport, #printReport *{visibility:visible;}
+    #printReport{
+      display:block !important;position:absolute;top:0;inset-inline-start:0;width:100%;
+      background:#fff;color:#141312;padding:0;
+    }
+    @page{ size:landscape; margin:14mm 12mm; }
+    .print-header{border-bottom:2px solid #e8630a;padding-bottom:12px;margin-bottom:18px;}
+    .print-brand{font-family:'Cairo',sans-serif;font-weight:900;font-size:1rem;color:#141312;}
+    .print-brand span{font-weight:500;color:#555;font-size:0.82rem;}
+    .print-header h1{font-family:'Cairo',sans-serif;font-size:1.3rem;margin:6px 0 4px;color:#141312;}
+    .print-meta{font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:#555;}
+    .print-table{width:100%;border-collapse:collapse;font-size:0.78rem;}
+    .print-table th{
+      text-align:start;background:#f1efe9;color:#141312;font-family:'Cairo';font-weight:800;
+      padding:8px 10px;border:1px solid #ddd;font-size:0.74rem;
+    }
+    .print-table td{padding:7px 10px;border:1px solid #ddd;color:#222;vertical-align:top;}
+    .print-table tr:nth-child(even) td{background:#faf9f6;}
+    .print-footer{margin-top:16px;font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:#888;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-brand"><span class="dot"></span><span>التركتور — لوحة التحكم</span></div>
+    <h2>تسجيل الدخول</h2>
+    <p class="sub">هذه اللوحة خاصة بالإدارة فقط.</p>
+    <form id="loginForm">
+      <div class="field">
+        <label>كلمة المرور</label>
+        <input type="password" id="loginPassword" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn" id="loginBtn">دخول</button>
+      <div class="login-error" id="loginError"></div>
+      <div style="text-align:center;margin-top:16px;">
+        <a href="#" id="forgotPassLink" style="font-size:0.82rem;color:var(--text-dim);">نسيت كلمة المرور؟</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ ADMIN APP ============ -->
+<div id="adminApp">
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><span class="dot"></span><span>التركتور</span><small class="mono">ADMIN</small></div>
+      <div class="who">
+        <span class="email mono" id="whoEmail"></span>
+        <button class="btn ghost small" id="logoutBtn">تسجيل الخروج</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="shell">
+    <div class="stats-row" id="statsRow"></div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="list">قائمة الكل</button>
+      <button class="tab-btn" data-tab="calendar">التقويم</button>
+      <button class="tab-btn" data-tab="settings">الإعدادات</button>
+    </div>
+
+    <!-- LIST TAB -->
+    <div class="tab-panel active" id="tab-list">
+      <div class="controls">
+        <input type="text" id="searchInput" placeholder="بحث بالاسم أو الواتساب أو البريد...">
+        <select id="filterPackage">
+          <option value="">كل الباقات</option>
+          <option value="basic">الباقة الأساسية</option>
+          <option value="pro">الباقة المتقدمة</option>
+          <option value="elite">الباقة الاحترافية</option>
+          <option value="consult">استشارة</option>
+        </select>
+        <select id="filterStatus">
+          <option value="">كل الحالات</option>
+          <option value="yeni">جديد</option>
+          <option value="contacted">تم التواصل</option>
+          <option value="active">نشط</option>
+          <option value="done">مكتمل</option>
+        </select>
+        <select id="sortOrder">
+          <option value="desc">الأحدث أولاً</option>
+          <option value="asc">الأقدم أولاً</option>
+        </select>
+        <div class="spacer"></div>
+        <button class="btn small" id="exportPdfBtn">⭳ تصدير PDF</button>
+      </div>
+
+      <div class="list-wrap" id="listWrap">
+        <div class="reg-row head">
+          <div>الاسم</div>
+          <div>الباقة</div>
+          <div>الهدف</div>
+          <div>الواتساب</div>
+          <div>الحالة</div>
+          <div>تاريخ التسجيل</div>
+          <div></div>
+        </div>
+        <div id="listBody"></div>
+      </div>
+    </div>
+
+    <!-- CALENDAR TAB -->
+    <div class="tab-panel" id="tab-calendar">
+      <div class="cal-head">
+        <h3 id="calTitle" class="mono"></h3>
+        <div class="cal-nav">
+          <button id="calPrev">‹</button>
+          <button id="calToday" class="mono" style="width:auto;padding:0 12px;font-size:0.75rem;">اليوم</button>
+          <button id="calNext">›</button>
+        </div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="day-list" id="dayList">
+        <div class="day-list-head">
+          <span id="dayListTitle"></span>
+          <button class="btn ghost small" id="dayListClose">✕</button>
+        </div>
+        <div id="dayListBody"></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div class="tab-panel" id="tab-settings">
+      <div class="login-card" style="max-width:380px;margin:0;">
+        <h2 style="font-size:1.15rem;">تغيير كلمة المرور</h2>
+        <p class="sub">سيتم تسجيل خروجك بعد التغيير، وستحتاج لتسجيل الدخول بالكلمة الجديدة.</p>
+        <form id="changePassForm">
+          <div class="field">
+            <label>كلمة المرور الحالية</label>
+            <input type="password" id="currentPass" required autocomplete="current-password">
+          </div>
+          <div class="field">
+            <label>كلمة المرور الجديدة</label>
+            <input type="password" id="newPass" required autocomplete="new-password" minlength="6">
+          </div>
+          <div class="field">
+            <label>تأكيد كلمة المرور الجديدة</label>
+            <input type="password" id="newPassConfirm" required autocomplete="new-password" minlength="6">
+          </div>
+          <button type="submit" class="btn" id="changePassBtn">تحديث كلمة المرور</button>
+          <div class="login-error" id="changePassError"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ DETAIL MODAL ============ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <button class="modal-close" id="modalClose">✕</button>
+    <h3 id="modalName"></h3>
+    <div class="modal-sub" id="modalSub"></div>
+    <div class="modal-grid" id="modalGrid"></div>
+    <div class="modal-actions">
+      <a class="btn ghost small" id="modalWhatsapp" href="#" target="_blank">مراسلة عبر واتساب</a>
+      <a class="btn ghost small" id="modalInstagram" href="#" target="_blank">فتح انستغرام</a>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PRINT REPORT (PDF) ============ -->
+<div id="printReport" class="print-only">
+  <div class="print-header">
+    <div class="print-brand">التركتور <span>— تدريب أونلاين لكمال الأجسام</span></div>
+    <h1 id="printTitle">قائمة التسجيلات</h1>
+    <div class="print-meta" id="printMeta"></div>
+  </div>
+  <table class="print-table" id="printTable">
+    <thead>
+      <tr>
+        <th>الاسم</th>
+        <th>الباقة</th>
+        <th>الحالة</th>
+        <th>الواتساب</th>
+        <th>البريد الإلكتروني</th>
+        <th>الوزن/الطول</th>
+        <th>البلد</th>
+        <th>تاريخ التسجيل</th>
+      </tr>
+    </thead>
+    <tbody id="printTableBody"></tbody>
+  </table>
+  <div class="print-footer">تم إنشاء هذا التقرير تلقائيًا من لوحة تحكم التركتور — <span id="printCount"></span> نتيجة</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  /* ---------- Firebase ---------- */
+  const firebaseConfig = {
+    apiKey: "AIzaSyCPex4bLsjnGiM3FHIP-569u23K02hbhuc",
+    authDomain: "al-tractor.firebaseapp.com",
+    projectId: "al-tractor",
+    storageBucket: "al-tractor.firebasestorage.app",
+    messagingSenderId: "218120641021",
+    appId: "1:218120641021:web:bc602b645eb0bac8da6194",
+    measurementId: "G-8S750QJMRJ"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  const pkgLabels = { basic:'الباقة الأساسية', pro:'الباقة المتقدمة', elite:'الباقة الاحترافية', consult:'استشارة' };
+  const pkgBadge = { basic:'badge-basic', pro:'badge-pro', elite:'badge-elite', consult:'badge-consult' };
+  const statusLabels = { yeni:'جديد', contacted:'تم التواصل', active:'نشط', done:'مكتمل' };
+  const fieldLabels = {
+    fullName:'الاسم الكامل', email:'البريد الإلكتروني', whatsapp:'رقم الواتساب', dob:'تاريخ الميلاد',
+    history:'التاريخ الرياضي', goals:'الأهداف', weight:'الوزن (كجم)', height:'الطول (سم)',
+    hours:'الساعات المتاحة أسبوعيًا', commitment:'نسبة الالتزام', health:'مشاكل صحية / إصابات',
+    calories:'حساب السعرات', instagram:'انستغرام', country:'بلد الإقامة', promo:'كود الخصم',
+    extra:'ملاحظات إضافية', language:'لغة النموذج'
+  };
+
+  let allRegs = [];       // raw docs {id, ...data}
+  let unsubscribe = null;
+  let calDate = new Date();
+  let selectedDayKey = null;
+
+  /* ---------- auth ---------- */
+  const loginScreen = document.getElementById('loginScreen');
+  const adminApp = document.getElementById('adminApp');
+  const loginForm = document.getElementById('loginForm');
+  const loginError = document.getElementById('loginError');
+  const loginBtn = document.getElementById('loginBtn');
+
+  loginForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    loginError.classList.remove('show');
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'جارٍ الدخول...';
+    const email = 'ganinn2411@gmail.com';
+    const pass = document.getElementById('loginPassword').value;
+    auth.signInWithEmailAndPassword(email, pass)
+      .catch(function(err){
+        loginError.textContent = 'بيانات الدخول غير صحيحة أو الحساب غير موجود.';
+        loginError.classList.add('show');
+      })
+      .finally(function(){
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'دخول';
+      });
+  });
+
+  document.getElementById('forgotPassLink').addEventListener('click', function(e){
+    e.preventDefault();
+    const link = e.currentTarget;
+    link.textContent = 'جارٍ الإرسال...';
+    auth.sendPasswordResetEmail('ganinn2411@gmail.com')
+      .then(function(){
+        loginError.textContent = 'تم إرسال رابط إعادة تعيين كلمة المرور إلى البريد المسجّل.';
+        loginError.style.color = 'var(--ok)';
+        loginError.classList.add('show');
+      })
+      .catch(function(err){
+        loginError.style.color = '';
+        loginError.textContent = 'تعذّر الإرسال: ' + err.message;
+        loginError.classList.add('show');
+      })
+      .finally(function(){
+        link.textContent = 'نسيت كلمة المرور؟';
+      });
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', function(){
+    auth.signOut();
+  });
+
+  auth.onAuthStateChanged(function(user){
+    if(user){
+      loginScreen.style.display = 'none';
+      adminApp.classList.add('show');
+      document.getElementById('whoEmail').textContent = user.email;
+      startListening();
+    } else {
+      loginScreen.style.display = 'flex';
+      adminApp.classList.remove('show');
+      if(unsubscribe){ unsubscribe(); unsubscribe = null; }
+      allRegs = [];
+    }
+  });
+
+  /* ---------- live data ---------- */
+  function startListening(){
+    if(unsubscribe) return;
+    unsubscribe = db.collection('kayitlar').orderBy('createdAt','desc')
+      .onSnapshot(function(snap){
+        allRegs = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+        renderStats();
+        renderList();
+        renderCalendar();
+      }, function(err){
+        console.error(err);
+        showToast('تعذّر تحميل البيانات: ' + err.message, 'err');
+      });
+  }
+
+  /* ---------- helpers ---------- */
+  function toDate(ts){
+    if(!ts) return null;
+    if(ts.toDate) return ts.toDate();
+    return new Date(ts);
+  }
+  function fmtDate(d){
+    if(!d) return '—';
+    return d.toLocaleDateString('ar-EG', {year:'numeric', month:'short', day:'numeric'}) + ' — ' +
+           d.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'});
+  }
+  function dayKey(d){
+    return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+  }
+  function showToast(msg, type){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + (type || '');
+    setTimeout(function(){ t.classList.remove('show'); }, 2600);
+  }
+  function waLink(num){
+    if(!num) return '#';
+    return 'https://wa.me/' + num.replace(/[^0-9+]/g,'').replace('+','');
+  }
+
+  /* ---------- stats ---------- */
+  function renderStats(){
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7*24*60*60*1000);
+    const thisWeek = allRegs.filter(function(r){
+      const d = toDate(r.createdAt);
+      return d && d >= weekAgo;
+    }).length;
+    const counts = {basic:0, pro:0, elite:0, consult:0};
+    allRegs.forEach(function(r){ if(counts[r.package] !== undefined) counts[r.package]++; });
+
+    document.getElementById('statsRow').innerHTML = [
+      statCard(allRegs.length, 'إجمالي التسجيلات'),
+      statCard(thisWeek, 'هذا الأسبوع'),
+      statCard(counts.pro, 'الباقة المتقدمة'),
+      statCard(counts.elite, 'الباقة الاحترافية'),
+      statCard(counts.basic + counts.consult, 'أساسية / استشارة')
+    ].join('');
+  }
+  function statCard(n, label){
+    return '<div class="stat"><div class="n">'+n+'</div><div class="l">'+label+'</div></div>';
+  }
+
+  /* ---------- list rendering ---------- */
+  function getFiltered(){
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    const pkg = document.getElementById('filterPackage').value;
+    const status = document.getElementById('filterStatus').value;
+    const order = document.getElementById('sortOrder').value;
+
+    let list = allRegs.filter(function(r){
+      if(pkg && r.package !== pkg) return false;
+      if(status && (r.status || 'yeni') !== status) return false;
+      if(q){
+        const hay = ((r.fullName||'') + ' ' + (r.whatsapp||'') + ' ' + (r.email||'')).toLowerCase();
+        if(hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+    list = list.slice().sort(function(a,b){
+      const da = toDate(a.createdAt), db_ = toDate(b.createdAt);
+      const ta = da ? da.getTime() : 0, tb = db_ ? db_.getTime() : 0;
+      return order === 'asc' ? ta - tb : tb - ta;
+    });
+    return list;
+  }
+
+  function renderList(){
+    const list = getFiltered();
+    const body = document.getElementById('listBody');
+    if(!list.length){
+      body.innerHTML = '<div class="empty-state">لا توجد تسجيلات مطابقة.</div>';
+      return;
+    }
+    body.innerHTML = list.map(function(r){
+      const d = toDate(r.createdAt);
+      const status = r.status || 'yeni';
+      return '<div class="reg-row" data-id="'+r.id+'">' +
+        '<div class="reg-name">'+esc(r.fullName||'—')+'<small>'+esc(r.country||'')+'</small></div>' +
+        '<div><span class="badge '+(pkgBadge[r.package]||'badge-basic')+'">'+esc(pkgLabels[r.package]||r.package||'—')+'</span></div>' +
+        '<div class="reg-date">'+esc(truncate(r.goals, 34))+'</div>' +
+        '<div class="mono reg-date">'+esc(r.whatsapp||'—')+'</div>' +
+        '<div>' + statusSelect(r.id, status) + '</div>' +
+        '<div class="reg-date mono">'+fmtDate(d)+'</div>' +
+        '<div class="view-arrow">‹</div>' +
+      '</div>';
+    }).join('');
+
+    body.querySelectorAll('.reg-row').forEach(function(row){
+      row.addEventListener('click', function(e){
+        if(e.target.closest('select')) return;
+        openModal(row.getAttribute('data-id'));
+      });
+    });
+    body.querySelectorAll('.status-select').forEach(function(sel){
+      sel.addEventListener('click', function(e){ e.stopPropagation(); });
+      sel.addEventListener('change', function(e){
+        updateStatus(sel.getAttribute('data-id'), sel.value);
+      });
+    });
+  }
+
+  function statusSelect(id, current){
+    let opts = '';
+    Object.keys(statusLabels).forEach(function(k){
+      opts += '<option value="'+k+'"'+(k===current?' selected':'')+'>'+statusLabels[k]+'</option>';
+    });
+    return '<select class="status-select" data-id="'+id+'">'+opts+'</select>';
+  }
+
+  function updateStatus(id, value){
+    db.collection('kayitlar').doc(id).update({status:value})
+      .then(function(){ showToast('تم تحديث الحالة', 'ok'); })
+      .catch(function(err){ showToast('فشل التحديث: '+err.message, 'err'); });
+  }
+
+  function truncate(s, n){
+    if(!s) return '—';
+    return s.length > n ? s.slice(0,n)+'…' : s;
+  }
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  ['searchInput','filterPackage','filterStatus','sortOrder'].forEach(function(id){
+    document.getElementById(id).addEventListener('input', renderList);
+    document.getElementById(id).addEventListener('change', renderList);
+  });
+
+  /* ---------- modal ---------- */
+  function openModal(id){
+    const r = allRegs.find(function(x){ return x.id === id; });
+    if(!r) return;
+    document.getElementById('modalName').textContent = r.fullName || '—';
+    document.getElementById('modalSub').textContent =
+      (pkgLabels[r.package] || r.package || '') + ' · ' + fmtDate(toDate(r.createdAt));
+
+    const order = ['whatsapp','email','dob','country','instagram','weight','height','hours','commitment','calories','promo','language','history','goals','health','extra'];
+    let html = '';
+    order.forEach(function(k){
+      const isFull = ['history','goals','health','extra'].indexOf(k) !== -1;
+      html += '<div class="modal-field'+(isFull?' full':'')+'"><div class="k">'+fieldLabels[k]+'</div><div class="v">'+esc(r[k]||'')+'</div></div>';
+    });
+    document.getElementById('modalGrid').innerHTML = html;
+
+    const wa = document.getElementById('modalWhatsapp');
+    if(r.whatsapp){ wa.href = waLink(r.whatsapp); wa.style.display = 'inline-flex'; }
+    else { wa.style.display = 'none'; }
+    const ig = document.getElementById('modalInstagram');
+    if(r.instagram){
+      const handle = r.instagram.replace('@','').trim();
+      ig.href = 'https://instagram.com/' + handle;
+      ig.style.display = 'inline-flex';
+    } else { ig.style.display = 'none'; }
+
+    document.getElementById('modalOverlay').classList.add('show');
+  }
+  document.getElementById('modalClose').addEventListener('click', function(){
+    document.getElementById('modalOverlay').classList.remove('show');
+  });
+  document.getElementById('modalOverlay').addEventListener('click', function(e){
+    if(e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+  });
+
+  /* ---------- PDF export (print-based, full Arabic/RTL support) ---------- */
+  document.getElementById('exportPdfBtn').addEventListener('click', function(){
+    const list = getFiltered();
+    if(!list.length){ showToast('لا توجد بيانات للتصدير', 'err'); return; }
+
+    const pkg = document.getElementById('filterPackage').value;
+    const status = document.getElementById('filterStatus').value;
+    const q = document.getElementById('searchInput').value.trim();
+    const filterBits = [];
+    if(q) filterBits.push('بحث: "'+q+'"');
+    if(pkg) filterBits.push('الباقة: '+(pkgLabels[pkg]||pkg));
+    if(status) filterBits.push('الحالة: '+(statusLabels[status]||status));
+
+    document.getElementById('printMeta').textContent =
+      'تاريخ الإصدار: ' + new Date().toLocaleDateString('ar-EG', {year:'numeric', month:'long', day:'numeric'}) +
+      (filterBits.length ? ' — ' + filterBits.join(' · ') : '');
+    document.getElementById('printCount').textContent = list.length;
+
+    document.getElementById('printTableBody').innerHTML = list.map(function(r){
+      const d = toDate(r.createdAt);
+      return '<tr>' +
+        '<td>'+esc(r.fullName||'—')+'</td>' +
+        '<td>'+esc(pkgLabels[r.package]||r.package||'—')+'</td>' +
+        '<td>'+esc(statusLabels[r.status||'yeni'])+'</td>' +
+        '<td>'+esc(r.whatsapp||'—')+'</td>' +
+        '<td>'+esc(r.email||'—')+'</td>' +
+        '<td>'+esc((r.weight||'—')+' كجم / '+(r.height||'—')+' سم')+'</td>' +
+        '<td>'+esc(r.country||'—')+'</td>' +
+        '<td>'+fmtDate(d)+'</td>' +
+      '</tr>';
+    }).join('');
+
+    setTimeout(function(){ window.print(); }, 80);
+  });
+
+
+  /* ---------- change password ---------- */
+  document.getElementById('changePassForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const errEl = document.getElementById('changePassError');
+    errEl.classList.remove('show');
+
+    const current = document.getElementById('currentPass').value;
+    const next = document.getElementById('newPass').value;
+    const confirm = document.getElementById('newPassConfirm').value;
+
+    if(next !== confirm){
+      errEl.textContent = 'كلمتا المرور الجديدتان غير متطابقتين.';
+      errEl.classList.add('show');
+      return;
+    }
+    if(next.length < 6){
+      errEl.textContent = 'يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.';
+      errEl.classList.add('show');
+      return;
+    }
+
+    const btn = document.getElementById('changePassBtn');
+    btn.disabled = true;
+    btn.textContent = 'جارٍ التحديث...';
+
+    const user = auth.currentUser;
+    const cred = firebase.auth.EmailAuthProvider.credential(user.email, current);
+
+    user.reauthenticateWithCredential(cred)
+      .then(function(){ return user.updatePassword(next); })
+      .then(function(){
+        showToast('تم تحديث كلمة المرور، الرجاء تسجيل الدخول من جديد', 'ok');
+        document.getElementById('changePassForm').reset();
+        setTimeout(function(){ auth.signOut(); }, 1200);
+      })
+      .catch(function(err){
+        errEl.textContent = err.code === 'auth/wrong-password'
+          ? 'كلمة المرور الحالية غير صحيحة.'
+          : 'فشل التحديث: ' + err.message;
+        errEl.classList.add('show');
+      })
+      .finally(function(){
+        btn.disabled = false;
+        btn.textContent = 'تحديث كلمة المرور';
+      });
+  });
+
+  document.querySelectorAll('.tab-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+      document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('tab-'+btn.getAttribute('data-tab')).classList.add('active');
+      if(btn.getAttribute('data-tab') === 'calendar') renderCalendar();
+    });
+  });
+
+  /* ---------- calendar ---------- */
+  const monthNames = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  const dowNames = ['أحد','إثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
+
+  document.getElementById('calPrev').addEventListener('click', function(){
+    calDate.setMonth(calDate.getMonth()-1); renderCalendar();
+  });
+  document.getElementById('calNext').addEventListener('click', function(){
+    calDate.setMonth(calDate.getMonth()+1); renderCalendar();
+  });
+  document.getElementById('calToday').addEventListener('click', function(){
+    calDate = new Date(); renderCalendar();
+  });
+  document.getElementById('dayListClose').addEventListener('click', function(){
+    document.getElementById('dayList').classList.remove('show');
+    selectedDayKey = null;
+  });
+
+  function renderCalendar(){
+    const year = calDate.getFullYear();
+    const month = calDate.getMonth();
+    document.getElementById('calTitle').textContent = monthNames[month] + ' ' + year;
+
+    /* group registrations by day */
+    const byDay = {};
+    allRegs.forEach(function(r){
+      const d = toDate(r.createdAt);
+      if(!d) return;
+      const k = dayKey(d);
+      if(!byDay[k]) byDay[k] = [];
+      byDay[k].push(r);
+    });
+
+    const firstOfMonth = new Date(year, month, 1);
+    const startOffset = firstOfMonth.getDay(); /* 0 = Sunday */
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+    const today = new Date();
+
+    let html = dowNames.map(function(n){ return '<div class="cal-dow">'+n+'</div>'; }).join('');
+
+    for(let i=0;i<startOffset;i++){
+      html += '<div class="cal-cell empty-cell"></div>';
+    }
+    for(let day=1; day<=daysInMonth; day++){
+      const cellDate = new Date(year, month, day);
+      const k = dayKey(cellDate);
+      const regs = byDay[k] || [];
+      const isToday = cellDate.toDateString() === today.toDateString();
+      const dots = regs.slice(0,8).map(function(r){
+        const cls = pkgBadge[r.package] || 'badge-basic';
+        const color = cls === 'badge-pro' ? 'var(--ember-bright)' : cls === 'badge-elite' ? '#ffb35e' : cls === 'badge-consult' ? 'var(--ok)' : 'var(--steel)';
+        return '<span class="cal-dot" style="background:'+color+'"></span>';
+      }).join('');
+      html += '<div class="cal-cell'+(regs.length?' has-data':'')+(isToday?' today':'')+'" data-day="'+k+'">' +
+        '<div class="day-num">'+day+'</div>' +
+        (regs.length ? '<div class="cal-dots">'+dots+'</div>' : '') +
+        (regs.length ? '<div class="cal-count">'+regs.length+'</div>' : '') +
+      '</div>';
+    }
+
+    document.getElementById('calGrid').innerHTML = html;
+    document.querySelectorAll('.cal-cell.has-data').forEach(function(cell){
+      cell.addEventListener('click', function(){
+        openDayList(cell.getAttribute('data-day'), byDay[cell.getAttribute('data-day')]);
+      });
+    });
+
+    if(selectedDayKey && byDay[selectedDayKey]){
+      openDayList(selectedDayKey, byDay[selectedDayKey]);
+    }
+  }
+
+  function openDayList(key, regs){
+    selectedDayKey = key;
+    const parts = key.split('-');
+    const label = parts[2] + ' ' + monthNames[parseInt(parts[1],10)-1] + ' ' + parts[0];
+    document.getElementById('dayListTitle').textContent = label + ' — ' + regs.length + ' تسجيل';
+    document.getElementById('dayListBody').innerHTML = regs.map(function(r){
+      const d = toDate(r.createdAt);
+      return '<div class="reg-row day-reg-row" data-id="'+r.id+'">' +
+        '<div class="reg-name">'+esc(r.fullName||'—')+'</div>' +
+        '<div><span class="badge '+(pkgBadge[r.package]||'badge-basic')+'">'+esc(pkgLabels[r.package]||r.package||'—')+'</span></div>' +
+        '<div class="mono reg-date">'+esc(r.whatsapp||'—')+'</div>' +
+        '<div class="reg-date mono">'+fmtDate(d)+'</div>' +
+      '</div>';
+    }).join('');
+    document.getElementById('dayListBody').querySelectorAll('.reg-row').forEach(function(row){
+      row.addEventListener('click', function(){ openModal(row.getAttribute('data-id')); });
+    });
+    document.getElementById('dayList').classList.add('show');
+    document.getElementById('dayList').scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+</script>
+</body>
+</html>
